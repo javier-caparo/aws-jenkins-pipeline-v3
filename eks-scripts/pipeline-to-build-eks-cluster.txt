@@ -1,0 +1,55 @@
+pipeline {
+    agent any
+    stages {
+        stage('Start') {
+            steps {
+                sh 'echo "Hello , we are going to build the EKS cluster"'
+            }
+        }
+        stage('List IAM Role') {
+            steps {
+                withAWS(credentials: 'aws-credentials', region: 'us-west-2') {
+                    sh 'aws iam get-user'
+                }
+            }
+        }
+        stage('Build EKS VPC') {
+            steps {
+                withAWS(credentials: 'aws-credentials', region: 'us-west-2') {
+                    sh '''
+                        aws cloudformation create-stack --stack-name my-eks-vpc --template-url https://jc-eks-cloudformation.s3-us-west-2.amazonaws.com/amazon-eks-vpc-private-subnets.yaml
+                        aws cloudformation describe-stacks --region us-west-2 --stack-name "my-eks-vpc" --query Stacks[].Outputs[*].[OutputKey,OutputValue] --output text
+                    '''
+                }
+            }
+        }
+        stage('get cluster.yaml from S3') {
+            steps {
+                input message: 'Your EKS VPC is ready. Update your cluster.yaml file before to proceed? (Click "Proceed" to continue)'
+                withAWS(credentials: 'aws-credentials', region: 'us-west-2') {
+                    sh 'aws s3 cp --quiet s3://jc-eks-cloudformation/cluster.yaml cluster.yaml'                        
+                }
+            }
+        }
+        stage('Build EKS Cluster') {
+            steps {
+                withAWS(credentials: 'aws-credentials', region: 'us-west-2') {
+                    sh 'eksctl create cluster -f cluster.yaml'
+                }
+            }
+        }
+        stage('EKS CLuster is ready') {
+            steps {
+                withAWS(credentials: 'aws-credentials', region: 'us-west-2') {
+                    sh 'kubectl get svc'
+                    sh 'aws eks --region us-west-2 update-kubeconfig --name EKS-Capstone-Cluster'
+                }
+            }
+        }
+        stage ('Speak') {
+            steps{
+                echo "Hello EKS-Capstone-Cluster CLuster"
+            }
+        }
+    }
+}

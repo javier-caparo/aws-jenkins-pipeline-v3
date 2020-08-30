@@ -1,0 +1,30 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: EKS-Capstone-Cluster
+  region: us-west-2
+  version: '1.17'
+
+vpc:
+  id: vpc-0b7feffb128ff01e1
+  cidr: "192.168.0.0/16"
+  subnets:
+    public:
+      us-west-2a:
+        id: subnet-0fab11491178ff5a5
+      us-west-2b:
+        id: subnet-0ce6530fe99a648fb
+    private:
+      us-west-2a:
+        id: subnet-08636ec5b5224698a
+      us-west-2b:
+        id: subnet-0dcfd5627dbbd7557
+
+nodeGroups:
+  - name: EKS-public-workers
+    instanceType: t3.small
+    desiredCapacity: 2
+  - name: EKS-private-workers
+    instanceType: t3.small
+    desiredCapacity: 1
+    privateNetworking: true
